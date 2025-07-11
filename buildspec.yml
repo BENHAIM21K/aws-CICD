@@ -9,7 +9,7 @@ phases:
       - echo "Running Lambda unit tests..."
       - python3 -m unittest test_lambda.py
       - echo "Zipping Lambda package and appspec..."
-      - zip -r lambda-deploy-package.zip lambda_function.py appspec.yaml
+      - zip lambda-deploy-package.zip lambda_function.py appspec.yaml
 artifacts:
   files:
     - lambda-deploy-package.zip
