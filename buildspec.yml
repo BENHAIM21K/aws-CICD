@@ -9,7 +9,14 @@ phases:
       - echo "Running Lambda unit tests..."
       - python3 -m unittest test_lambda.py
       - echo "Zipping Lambda package and appspec..."
-      - zip lambda-deploy-package.zip lambda_function.py appspec.yaml
+      - zip -r lambda-deploy-package.zip lambda_function.py appspec.yaml
+  post_build:
+    commands:
+      - echo "Publishing new Lambda version..."
+      - VERSION=$(aws lambda publish-version --function-name HelloWorldFunction --query 'Version' --output text)
+      - echo "Updating 'live' alias to version $VERSION"
+      - aws lambda update-alias --function-name HelloWorldFunction --name live --function-version $VERSION
+
 artifacts:
   files:
     - lambda-deploy-package.zip
