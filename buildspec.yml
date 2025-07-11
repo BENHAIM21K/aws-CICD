@@ -12,9 +12,16 @@ phases:
 
   post_build:
     commands:
+      - echo "Zipping Lambda code..."
+      - zip -r lambda-deploy-package.zip lambda_function.py
+
+      - echo "Updating Lambda code..."
+      - aws lambda update-function-code --function-name HelloWorldFunction --zip-file fileb://lambda-deploy-package.zip
+
       - echo "Publishing new Lambda version..."
       - CURRENT=$(aws lambda get-alias --function-name HelloWorldFunction --name live --query 'FunctionVersion' --output text)
       - TARGET=$(aws lambda publish-version --function-name HelloWorldFunction --query 'Version' --output text)
+
       - echo "Generating appspec.yaml..."
       - |
         cat <<EOF > appspec.yaml
@@ -28,12 +35,14 @@ phases:
                 CurrentVersion: ${CURRENT}
                 TargetVersion: ${TARGET}
         EOF
-      - echo "Zipping Lambda and appspec.yaml..."
-      - zip -r lambda-deploy-package.zip lambda_function.py appspec.yaml
+
+      - echo "Re-zipping for deployment with appspec.yaml..."
+      - zip -g lambda-deploy-package.zip appspec.yaml
+
       - echo "Lambda version $TARGET published"
       - aws lambda get-alias --function-name HelloWorldFunction --name live
       - aws lambda get-function --function-name HelloWorldFunction:$TARGET
-      - echo "Showing lambda function content:"
+      - echo "Deployed lambda content:"
       - cat lambda_function.py
 
 artifacts:
