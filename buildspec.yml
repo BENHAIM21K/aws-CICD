@@ -28,6 +28,9 @@ phases:
         EOF
       - echo "Zipping Lambda and appspec.yaml..."
       - zip -r lambda-deploy-package.zip lambda_function.py appspec.yaml
+      - aws lambda get-alias --function-name HelloWorldFunction --name live
+      - aws lambda get-function --function-name HelloWorldFunction:$TARGET
+
 
 artifacts:
   files:
