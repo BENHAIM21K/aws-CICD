@@ -11,27 +11,30 @@ phases:
       - python3 -m unittest test_lambda.py
 
   post_build:
-    commands:
-      - echo "Publishing new Lambda version..."
-      - VERSION=$(aws lambda publish-version --function-name HelloWorldFunction --query 'Version' --output text)
-      - echo "Generating appspec.yaml..."
-      - |
-        cat <<EOF > appspec.yaml
-        version: 0.0
-        Resources:
-          - MyLambdaFunction:
-              Type: AWS::Lambda::Function
-              Properties:
-                Name: HelloWorldFunction
-                Alias: live
-        EOF
-      - echo "Zipping Lambda and appspec.yaml..."
-      - zip -r lambda-deploy-package.zip lambda_function.py appspec.yaml
-      - echo "Lambda version $VERSION published"
-      - aws lambda get-alias --function-name HelloWorldFunction --name live
-      - aws lambda get-function --function-name HelloWorldFunction:$VERSION
-      - echo "Showing lambda function content:"
-      - cat lambda_function.py
+  commands:
+    - echo "Publishing new Lambda version..."
+    - CURRENT=$(aws lambda get-alias --function-name HelloWorldFunction --name live --query 'FunctionVersion' --output text)
+    - TARGET=$(aws lambda publish-version --function-name HelloWorldFunction --query 'Version' --output text)
+    - echo "Generating appspec.yaml..."
+    - |
+      cat <<EOF > appspec.yaml
+      version: 0.0
+      Resources:
+        - MyLambdaFunction:
+            Type: AWS::Lambda::Function
+            Properties:
+              Name: HelloWorldFunction
+              Alias: live
+              CurrentVersion: $CURRENT
+              TargetVersion: $TARGET
+      EOF
+    - echo "Zipping Lambda and appspec.yaml..."
+    - zip -r lambda-deploy-package.zip lambda_function.py appspec.yaml
+    - echo "Lambda version $TARGET published"
+    - aws lambda get-alias --function-name HelloWorldFunction --name live
+    - aws lambda get-function --function-name HelloWorldFunction:$TARGET
+    - echo "Showing lambda function content:"
+    - cat lambda_function.py
 
 artifacts:
   files:
