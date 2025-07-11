@@ -8,14 +8,26 @@ phases:
     commands:
       - echo "Running Lambda unit tests..."
       - python3 -m unittest test_lambda.py
-      - echo "Zipping Lambda package and appspec..."
-      - zip -r lambda-deploy-package.zip lambda_function.py appspec.yaml
   post_build:
     commands:
       - echo "Publishing new Lambda version..."
-      - VERSION=$(aws lambda publish-version --function-name HelloWorldFunction --query 'Version' --output text)
-      - echo "Updating 'live' alias to version $VERSION"
-      - aws lambda update-alias --function-name HelloWorldFunction --name live --function-version $VERSION
+      - CURRENT=$(aws lambda get-alias --function-name HelloWorldFunction --name live --query 'FunctionVersion' --output text)
+      - TARGET=$(aws lambda publish-version --function-name HelloWorldFunction --query 'Version' --output text)
+      - echo "Generating appspec.yaml..."
+      - |
+        cat <<EOF > appspec.yaml
+        version: 0.0
+        Resources:
+          - MyLambdaFunction:
+              Type: AWS::Lambda::Function
+              Properties:
+                Name: HelloWorldFunction
+                Alias: live
+                CurrentVersion: $CURRENT
+                TargetVersion: $TARGET
+        EOF
+      - echo "Zipping Lambda and appspec.yaml..."
+      - zip -r lambda-deploy-package.zip lambda_function.py appspec.yaml
 
 artifacts:
   files:
