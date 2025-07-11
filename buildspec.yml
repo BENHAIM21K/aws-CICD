@@ -9,27 +9,31 @@ phases:
       - echo "Running Lambda unit tests..."
       - python3 -m unittest test_lambda.py
   post_build:
-    commands:
-      - echo "Publishing new Lambda version..."
-      - CURRENT=$(aws lambda get-alias --function-name HelloWorldFunction --name live --query 'FunctionVersion' --output text)
-      - TARGET=$(aws lambda publish-version --function-name HelloWorldFunction --query 'Version' --output text)
-      - echo "Generating appspec.yaml..."
-      - |
-        cat <<EOF > appspec.yaml
-        version: 0.0
-        Resources:
-          - MyLambdaFunction:
-              Type: AWS::Lambda::Function
-              Properties:
-                Name: HelloWorldFunction
-                Alias: live
-                CurrentVersion: $CURRENT
-                TargetVersion: $TARGET
-        EOF
-      - echo "Zipping Lambda and appspec.yaml..."
-      - zip -r lambda-deploy-package.zip lambda_function.py appspec.yaml
-      - aws lambda get-alias --function-name HelloWorldFunction --name live
-      - aws lambda get-function --function-name HelloWorldFunction:$TARGET
+  commands:
+    - echo "Publishing new Lambda version..."
+    - CURRENT=$(aws lambda get-alias --function-name HelloWorldFunction --name live --query 'FunctionVersion' --output text)
+    - echo "Generating appspec.yaml..."
+    - |
+      cat <<EOF > appspec.yaml
+      version: 0.0
+      Resources:
+        - MyLambdaFunction:
+            Type: AWS::Lambda::Function
+            Properties:
+              Name: HelloWorldFunction
+              Alias: live
+              CurrentVersion: $CURRENT
+              TargetVersion: LATEST_VERSION_PLACEHOLDER
+      EOF
+    - echo "Zipping Lambda and appspec.yaml..."
+    - zip -r lambda-deploy-package.zip lambda_function.py appspec.yaml
+    - echo "Updating Lambda code..."
+    - aws lambda update-function-code --function-name HelloWorldFunction --zip-file fileb://lambda-deploy-package.zip
+    - TARGET=$(aws lambda publish-version --function-name HelloWorldFunction --query 'Version' --output text)
+    - sed -i "s/LATEST_VERSION_PLACEHOLDER/$TARGET/" appspec.yaml
+    - echo "Lambda version $TARGET published"
+    - aws lambda get-alias --function-name HelloWorldFunction --name live
+    - aws lambda get-function --function-name HelloWorldFunction:$TARGET
 
 
 artifacts:
